@@ -1,0 +1,137 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from torchvision.datasets import InriaDataset, YourDataset
+from torch.utils.data.dataset import Subset
+from fusionnet import FusionNet
+import cv2
+
+#--중요 변수--#
+#이미지 사이즈와 픽셀값
+sizex = 224
+sizey = 224
+pix = 0.5
+
+#손실함수 kernel 종류와 Canny 최대최솟값
+KernType = cv2.MORPH_RECT
+KernSize = 5
+minVal = #
+maxVal = #
+
+#훈련 루프 변수
+learning_rate = 0.001
+betas = (0.9, 0.999)
+epsilon = 1e-8
+batch_size = 12
+num_epochs = 200
+group_norm_size = 32
+#--#
+
+# 사전 훈련된 FusionNet 모델 로드 (임시로 'fusionnet.pth'로 적음)
+model = FusionNet()
+model.load_state_dict(torch.load('fusionnet.pth'))
+model.eval()  # 모델을 평가 모드로 설정 (그래디언트 계산 없음)
+
+# 필요에 따라 모델 수정 (입력/출력 레이어 조정, 특정 레이어 고정, 추가 레이어 등)
+
+#--#
+
+# Create the Adam optimizer 아담 옵티마이저
+optimizer = optim.Adam(
+    params=model.parameters(),
+    lr=learning_rate,
+    betas=betas,
+    eps=epsilon
+)
+
+#--#
+
+#데이터 준비 - transform 정의 / 데이터 가져오기 / 데이터 로더 생성
+
+# transform 정의 -- 데이터 크기 확인 및 픽셀 어떻게 할지
+transform = transforms.Compose([
+    transforms.Resize((sizex, sizey)),  # Resize the images to a consistent size 크기 일정하게
+    transforms.ToTensor(),  # Convert the images to tensors 텐서로 바꿔서 쓸수 있게 만들어 줌
+    transforms.Normalize((pix, pix, pix), (pix, pix, pix))  # Normalize the pixel values 픽셀 값 지정해주기
+])
+
+# Load the datasets 데이터 가져오기
+inria_dataset = InriaDataset(root="임시주소1", transform=transform)
+your_dataset = YourDataset(root="임시주소2", transform=transform)
+
+# Split the datasets into training, validation, and test sets 데이터 종류마다 분류, 라벨붙이기
+inria_train_indices = range(86400)
+inria_val_indices = range(86400, 115200)
+inria_test_indices = range(115200, 144000)
+
+your_train_indices = range(4500)
+your_val_indices = range(4500, 6750)
+your_test_indices = range(6750, 9000)
+
+inria_train_set = Subset(inria_dataset, inria_train_indices)
+inria_val_set = Subset(inria_dataset, inria_val_indices)
+inria_test_set = Subset(inria_dataset, inria_test_indices)
+
+your_train_set = Subset(your_dataset, your_train_indices)
+your_val_set = Subset(your_dataset, your_val_indices)
+your_test_set = Subset(your_dataset, your_test_indices)
+
+# Create data loaders 데이터 로더 만들기
+inria_train_loader = DataLoader(inria_train_set, batch_size=batch_size, shuffle=True)
+inria_val_loader = DataLoader(inria_val_set, batch_size=batch_size)
+inria_test_loader = DataLoader(inria_test_set, batch_size=batch_size)
+
+your_train_loader = DataLoader(your_train_set, batch_size=batch_size, shuffle=True)
+your_val_loader = DataLoader(your_val_set, batch_size=batch_size)
+your_test_loader = DataLoader(your_test_set, batch_size=batch_size)
+
+#--#
+# s1의 loss 정의하기
+#BCE loss, IoU loss, B-loss
+def s1_loss(outputs,labels){
+    return nn.BCELoss(outputs,labels) + BLoss(outputs, labels)
+}
+
+def BLoss(outputs, labels){
+    return IoU(edge(outputs), edge(labels))#---IoU따라 변경---#
+}
+def edge(input){
+    img = input.numpy()
+    kernel = cv2.getStructuringElement(KernType, (KernSize, KernSize))
+    
+    img = cv2.erode(img, kernel, iterations=1)
+    img = cv2.Canny(img, minVal, maxVal)
+    img = cv2.dilate(img, kernel, iterations=1)
+
+    output = torch.from_numpy(img)
+    return output
+
+#--#
+
+# 훈련 루프
+for epoch in range(num_epochs):
+    # Training phase
+    model.train()
+    for images, labels in inria_train_loader:
+        # Perform the forward pass, compute loss, and backward pass
+        outputs = model(images)
+        loss = s1_loss(outputs, labels)
+        # Update the model's parameters using the optimizer
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    # Validation phase
+    model.eval()
+    with torch.no_grad():
+        for images, labels in inria_val_loader:
+            # Perform the forward pass and compute validation metrics
+            # ...
+
+    # Adjust the learning rate every 50 epochs
+    if (epoch + 1) % 50 == 0:
+        learning_rate /= 2
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = learning_rate
