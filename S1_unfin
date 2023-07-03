@@ -30,6 +30,8 @@ epsilon = 1e-8
 batch_size = 12
 num_epochs = 200
 group_norm_size = 32
+
+best_model_path = 'best_model.pth' #제일 잘나온 s1 모델 저장 주소
 #--#
 
 # 사전 훈련된 FusionNet 모델 로드 (임시로 'fusionnet.pth'로 적음)
@@ -114,6 +116,7 @@ def edge(input){
 #--#
 
 # 훈련 루프
+best_accuracy = 0.0
 for epoch in range(num_epochs):
     # Training phase
     model.train()
@@ -128,10 +131,21 @@ for epoch in range(num_epochs):
 
     # Validation phase
     model.eval()
+    total = 0
+    correct = 0
     with torch.no_grad():
         for images, labels in inria_val_loader:
-            # Perform the forward pass and compute validation metrics
-            # ...
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    accuracy = correct / total
+
+    # Save the best model based on validation accuracy
+    if accuracy > best_accuracy:
+        best_accuracy = accuracy
+        torch.save(model.state_dict(), best_model_path)
 
     # Adjust the learning rate every 50 epochs
     if (epoch + 1) % 50 == 0:
