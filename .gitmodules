@@ -1,0 +1,3 @@
+[submodule "FusionNet_Pytorch"]
+	path = FusionNet_Pytorch
+	url = https://github.com/GunhoChoi/FusionNet_Pytorch
