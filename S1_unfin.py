@@ -1,6 +1,5 @@
 #이미지 사이즈와 픽셀값 / 손실함수 관련 중요변수 논의 필요
 #주소 다 데려와야함
-#IoU-loss를 의미하는 IoU 함수 제작해야함
 
 # outputs = (모델이 준 답안), labels = (실제 해답).aka.ground
 
@@ -12,19 +11,13 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import InriaDataset, YourDataset
 from torch.utils.data.dataset import Subset
 from fusionnet import FusionNet
-import cv2
+import loss
 
 #--중요 변수--#
 #이미지 사이즈와 픽셀값
 sizex = #224
 sizey = #224
 pix = #0.5
-
-#손실함수 kernel 종류와 Canny 최대최솟값
-KernType = #cv2.MORPH_RECT
-KernSize = #5
-minVal = #
-maxVal = #
 
 #훈련 루프 변수
 learning_rate = 0.001
@@ -103,28 +96,6 @@ your_val_loader = DataLoader(your_val_set, batch_size=batch_size)
 your_test_loader = DataLoader(your_test_set, batch_size=batch_size)'''
 
 #--#
-# s1의 loss 정의하기
-#BCE loss, IoU loss, B-loss
-def s1_loss(outputs,labels):
-    criterion = nn.BCELoss()
-    bceLoss = criterion(outputs, labels)
-    return bceLoss + BLoss(outputs, labels)
-
-def BLoss(outputs, labels):
-    return IoU(edge(outputs), edge(labels))#---IoU따라 변경---#
-
-def edge(input):
-    img = input.detach().cpu().numpy()
-    kernel = cv2.getStructuringElement(KernType, (KernSize, KernSize))
-    
-    img = cv2.erode(img, kernel, iterations=1)
-    img = cv2.Canny(img, minVal, maxVal)
-    img = cv2.dilate(img, kernel, iterations=1)
-
-    output = torch.from_numpy(img)
-    return output
-
-#--#
 
 # 훈련 루프
 best_accuracy = 0.0
@@ -134,7 +105,7 @@ for epoch in range(num_epochs):
     for images, labels in inria_train_loader:
         # Perform the forward pass, compute loss, and backward pass
         outputs = model(images)
-        loss = s1_loss(outputs, labels)
+        loss = loss.s1_loss(outputs, labels)
         # Update the model's parameters using the optimizer
         optimizer.zero_grad()
         loss.backward()
