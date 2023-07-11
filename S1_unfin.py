@@ -37,12 +37,36 @@ best_S1 = #제일 잘나온 s1 모델 저장 주소 ''
 
 #--#
 
-# 사전 훈련된 FusionNet 모델 로드
-model = FusionNet()
-model.load_state_dict(torch.load(fusionload))
-model.eval()  # 모델을 평가 모드로 설정
+# Define the S1 model following the pipeline
+class S1Net(nn.Module):
+    def __init__(self):
+        super(S1Net, self).__init__()
+        # Add layers as per your pipeline
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-# 필요에 따라 모델 수정 (입력/출력 레이어 조정, 특정 레이어 고정, 추가 레이어 등)
+        # Add more layers as per your requirements
+
+        self.fc = nn.Linear(64 * sizex//2 * sizey//2, 2)  # Adjust output dimensions based on your task
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.maxpool(x)
+
+        # Add more layers and pooling as per your pipeline
+
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
+# Create the S1 model instance
+model = S1Net()
+
+# Load the pretrained FusionNet model weights into the S1 model
+fusion_model = torch.load(fusionload)
+model.load_state_dict(fusion_model.state_dict())
 
 #--#
 
