@@ -12,6 +12,7 @@ from torchvision.datasets import InriaDataset, YourDataset
 from torch.utils.data.dataset import Subset
 from fusionnet import FusionNet
 import loss
+from s1model import S1Net
 
 #--중요 변수--#
 #이미지 사이즈와 픽셀값
@@ -36,30 +37,6 @@ Inria = #기본 데이터셋 주소 ''
 best_S1 = #제일 잘나온 s1 모델 저장 주소 ''
 
 #--#
-
-# Define the S1 model following the pipeline
-class S1Net(nn.Module):
-    def __init__(self):
-        super(S1Net, self).__init__()
-        # Add layers as per your pipeline
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # Add more layers as per your requirements
-
-        self.fc = nn.Linear(64 * sizex//2 * sizey//2, 2)  # Adjust output dimensions based on your task
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.maxpool(x)
-
-        # Add more layers and pooling as per your pipeline
-
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        return x
 
 # Create the S1 model instance
 model = S1Net()
